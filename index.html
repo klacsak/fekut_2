@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Féktávolság és Lassuló Mozgás Szimulátor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        input[type="range"] {
+            accent-color: #0284c7;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+        }
+        .pulse-danger {
+            animation: dangerPulse 1.2s infinite;
+        }
+        @keyframes dangerPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { transform: scale(1.03); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+        }
+        @keyframes flashAnim {
+            0% { opacity: 0; transform: scale(0.7); }
+            50% { opacity: 1; transform: scale(1.08); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .obstacle-pop {
+            animation: flashAnim 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-sky-500 selection:text-white">
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-sky-500/20">
+                    <i class="fa-solid fa-car-burst text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                        Féktávolság & Lassuló Mozgás
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">Fizika Labor</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Reakcióidő, egyenletesen lassuló mozgás és grafikus analízis</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button id="soundToggle" class="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-xs font-medium text-slate-300 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-volume-high text-sky-400" id="soundIcon"></i>
+                    <span id="soundLabel">Hangok: Be</span>
+                </button>
+                <a href="#formulaSection" class="px-3 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 text-xs font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-calculator"></i> Képletek
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Bal oldal: Paraméterek vezérlése -->
+            <section class="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+                <div class="space-y-5">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h2 class="text-base font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-sky-400"></i> Menetdinamikai Paraméterek
+                        </h2>
+                        <span class="text-xs text-slate-400">Állítsd be a kezdőfeltételeket</span>
+                    </div>
+
+                    <!-- v0 Kezdősebesség -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-baseline">
+                            <label for="speedInput" class="text-sm font-medium text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-gauge text-slate-400"></i> Kezdősebesség (<span class="font-mono text-sky-400">v₀</span>):
+                            </label>
+                            <div class="text-right">
+                                <span id="speedKmhDisplay" class="text-lg font-mono font-bold text-sky-400">50</span> <span class="text-xs text-slate-400 font-mono">km/h</span>
+                                <span class="text-slate-500 mx-1">|</span>
+                                <span id="speedMsDisplay" class="text-xs text-slate-300 font-mono">13.89 m/s</span>
+                            </div>
+                        </div>
+                        <input id="speedInput" type="range" min="10" max="150" value="50" step="1" class="w-full h-2 bg-slate-700 rounded-lg cursor-pointer">
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            <button onclick="setSpeed(30)" class="px-2.5 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">30 km/h (Lakóövezet)</button>
+                            <button onclick="setSpeed(50)" class="px-2.5 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">50 km/h (Város)</button>
+                            <button onclick="setSpeed(90)" class="px-2.5 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">90 km/h (Országút)</button>
+                            <button onclick="setSpeed(130)" class="px-2.5 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">130 km/h (Autópálya)</button>
+                        </div>
+                    </div>
+
+                    <!-- a Fékezési lassulás -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-baseline">
+                            <label for="accelInput" class="text-sm font-medium text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-road text-slate-400"></i> Fékezési lassulás (<span class="font-mono text-amber-400">a</span>):
+                            </label>
+                            <div class="text-right">
+                                <span id="accelDisplay" class="text-lg font-mono font-bold text-amber-400">7.5</span> <span class="text-xs text-slate-400 font-mono">m/s²</span>
+                            </div>
+                        </div>
+                        <input id="accelInput" type="range" min="1.5" max="10" value="7.5" step="0.1" class="w-full h-2 bg-slate-700 rounded-lg cursor-pointer">
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            <button onclick="setDecel(2.0)" class="px-2.5 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">❄️ Jeges út (2.0 m/s²)</button>
+                            <button onclick="setDecel(5.0)" class="px-2.5 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">🌧️ Nedves út (5.0 m/s²)</button>
+                            <button onclick="setDecel(7.5)" class="px-2.5 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">☀️ Száraz aszfalt (7.5 m/s²)</button>
+                            <button onclick="setDecel(9.5)" class="px-2.5 py-1 text-xs rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">🏎️ Vészfék ABS (9.5 m/s²)</button>
+                        </div>
+                    </div>
+
+                    <!-- t_r Reakcióidő -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-baseline">
+                            <label for="reactInput" class="text-sm font-medium text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-stopwatch text-slate-400"></i> Reakcióidő (<span class="font-mono text-emerald-400">t_r</span>):
+                            </label>
+                            <div class="text-right">
+                                <span id="reactDisplay" class="text-lg font-mono font-bold text-emerald-400">0.85</span> <span class="text-xs text-slate-400 font-mono">s</span>
+                            </div>
+                        </div>
+                        <input id="reactInput" type="range" min="0.2" max="2.5" value="0.85" step="0.05" class="w-full h-2 bg-slate-700 rounded-lg cursor-pointer">
+                        <p class="text-xs text-slate-400">Tipp: Mérd meg a saját reakcióidődet a jobb oldali interaktív teszttel!</p>
+                    </div>
+                </div>
+
+                <!-- Szimuláció indításvezérlő -->
+                <div class="pt-4 mt-4 border-t border-slate-800 flex flex-wrap items-center gap-3">
+                    <button id="startSimBtn" class="flex-1 min-w-[160px] py-3 px-5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-sm shadow-lg shadow-sky-500/25 flex items-center justify-center gap-2 transition transform active:scale-95">
+                        <i class="fa-solid fa-play"></i> Szimuláció Indítása
+                    </button>
+                    <button id="resetSimBtn" class="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium text-sm flex items-center gap-2 transition">
+                        <i class="fa-solid fa-rotate-left"></i> Alaphelyzet
+                    </button>
+                </div>
+            </section>
+
+            <!-- Jobb oldal: Interaktív Reakcióidő Reflexteszt -->
+            <section class="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between relative overflow-hidden">
+                <div>
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+                        <h2 class="text-base font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-bolt text-yellow-400"></i> Reflexteszt Modul
+                        </h2>
+                        <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">Valós mérés</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-3">
+                        Indítsd el a tesztet, várj a váratlan vészhelyzetre, majd amint megjelenik az akadály, nyomd le azonnal a <b>FÉK!</b> gombot vagy a <b>Szóközt</b>!
+                    </p>
+
+                    <!-- Reflexteszt interaktív doboz -->
+                    <div id="reflexArea" class="h-48 rounded-xl border-2 border-dashed border-slate-700 bg-slate-950 flex flex-col items-center justify-center p-4 relative transition duration-200 select-none overflow-hidden cursor-pointer">
+                        <div id="reflexIdleContent" class="text-center space-y-2">
+                            <div class="w-12 h-12 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-xl">
+                                <i class="fa-solid fa-hand-pointer"></i>
+                            </div>
+                            <div class="text-sm font-medium text-slate-300">Kattints a "Teszt Indítása" gombra!</div>
+                            <div class="text-xs text-slate-500">Mérd fel saját észlelési és cselekvési késedelmedet</div>
+                        </div>
+
+                        <div id="reflexCountdown" class="hidden text-center">
+                            <div id="countNumber" class="text-5xl font-mono font-extrabold text-sky-400 animate-pulse">3</div>
+                            <div class="text-xs uppercase tracking-widest text-slate-400 mt-2 font-semibold">Készülj fel...</div>
+                        </div>
+
+                        <div id="reflexWaiting" class="hidden text-center">
+                            <div class="w-12 h-12 mx-auto rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl mb-2">
+                                <i class="fa-solid fa-eye animate-bounce"></i>
+                            </div>
+                            <div class="text-base font-bold text-amber-300">FIGYELD AZ AKADÁLYT!</div>
+                            <div class="text-xs text-slate-400">Ne kattints előre, várj a jelre!</div>
+                        </div>
+
+                        <div id="reflexObstacle" class="hidden text-center obstacle-pop w-full h-full flex flex-col items-center justify-center bg-red-950/60 rounded-lg">
+                            <div id="obstacleVisual" class="mb-2">
+                                <!-- Dinamikusan betöltött akadály ikon/SVG -->
+                            </div>
+                            <div class="text-xl font-black text-red-500 tracking-wider">VESZÉLY! FÉKEZZ!</div>
+                        </div>
+
+                        <div id="reflexEarlyWarn" class="hidden text-center text-red-400">
+                            <i class="fa-solid fa-triangle-exclamation text-3xl mb-2"></i>
+                            <div class="font-bold text-sm">Túl korai kattintás!</div>
+                            <div class="text-xs text-slate-400">Meg kell várnod a vészjelzés felvillanását!</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 mt-2 space-y-3">
+                    <div class="flex items-center gap-2">
+                        <button id="startReflexBtn" class="flex-1 py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-stopwatch"></i> Teszt Indítása
+                        </button>
+                        <button id="triggerBrakeBtn" disabled class="flex-1 py-2.5 px-3 rounded-lg bg-red-600/50 cursor-not-allowed text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg">
+                            <i class="fa-solid fa-hand"></i> FÉK! (Szóköz)
+                        </button>
+                    </div>
+
+                    <div id="reflexResultBanner" class="hidden p-3 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs text-slate-400 block">Mért reakcióidőd:</span>
+                            <span id="measuredTimeText" class="text-xl font-mono font-extrabold text-emerald-400">0.000 s</span>
+                        </div>
+                        <button id="applyReflexBtn" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow transition">
+                            Érték Átvétele
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Dinamikus szimulációs környezet -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-3">
+                    <span class="p-2 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                        <i class="fa-solid fa-film"></i>
+                    </span>
+                    <div>
+                        <h3 class="text-base font-semibold text-white">Élő Fizikai Animáció & Útpálya</h3>
+                        <p class="text-xs text-slate-400">Szemlélteti a reakcióutat és a fékezési szakaszt egymáshoz viszonyítva</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 text-xs font-mono">
+                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-amber-400 inline-block"></span> Reakcióút (<span id="statSrBadge">11.8</span> m)</div>
+                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> Fékút (<span id="statSfBadge">12.9</span> m)</div>
+                    <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-sky-400 inline-block"></span> Teljes út (<span id="statStotBadge">24.7</span> m)</div>
+                </div>
+            </div>
+
+            <!-- Canvas az autóhoz -->
+            <div class="canvas-container bg-slate-950 rounded-xl border border-slate-800 h-56 sm:h-64 shadow-inner">
+                <canvas id="roadCanvas" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- Élő állapot sáv -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Aktuális Idő (t)</div>
+                    <div class="text-lg font-mono font-bold text-sky-400 mt-0.5"><span id="liveTime">0.00</span> s</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Pillanatnyi Sebesség (v)</div>
+                    <div class="text-lg font-mono font-bold text-amber-400 mt-0.5"><span id="liveSpeed">0.0</span> km/h</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Megtett Távolság (s)</div>
+                    <div class="text-lg font-mono font-bold text-emerald-400 mt-0.5"><span id="liveDist">0.0</span> m</div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Mozgás Állapota</div>
+                    <div id="liveStatus" class="text-sm font-semibold text-slate-300 mt-1 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-slate-500"></span> Készenlét
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Grafikonok szekció -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Út-idő grafikon (s - t) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-sky-400"></i> Út – Idő Grafikon (s – t)
+                        </h4>
+                        <p class="text-xs text-slate-400">Egyenes vonal (egyenletes mozgás) ➔ Parabola (lassulás)</p>
+                    </div>
+                    <span class="text-xs font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20">s(t) görbe</span>
+                </div>
+                <div class="canvas-container bg-slate-950 rounded-xl border border-slate-800 h-56 shadow-inner">
+                    <canvas id="stGraphCanvas" class="w-full h-full block"></canvas>
+                </div>
+            </div>
+
+            <!-- Sebesség-idő grafikon (v - t) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-area text-amber-400"></i> Sebesség – Idő Grafikon (v – t)
+                        </h4>
+                        <p class="text-xs text-slate-400">Konstans v₀ sebesség ➔ Lineáris csökkenés zéróig</p>
+                    </div>
+                    <span class="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">v(t) lejtő</span>
+                </div>
+                <div class="canvas-container bg-slate-950 rounded-xl border border-slate-800 h-56 shadow-inner">
+                    <canvas id="vtGraphCanvas" class="w-full h-full block"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Fizikai elméleti összegzés és számítási kártyák -->
+        <section id="formulaSection" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+            <div class="border-b border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-book-open-reader text-sky-400"></i>
+                    Fizikai Összefoglaló & Képlet-levezetés
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">Hogyan határozzuk meg a féktávolságot matematikailag és fizikailag?</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <!-- 1. Fázis: Reakcióút -->
+                <div class="bg-slate-950/70 rounded-xl p-4 border border-amber-500/20 relative">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs uppercase font-bold tracking-wider text-amber-400">1. Szakasz: Reakcióidő alatt</span>
+                        <i class="fa-solid fa-clock text-amber-400/50"></i>
+                    </div>
+                    <h5 class="text-sm font-bold text-white mb-1">Egyenletes mozgás (a = 0)</h5>
+                    <p class="text-xs text-slate-400 mb-3">A sofőr észleli a veszélyt, az agy utasítást ad a lábnak, és a fékrendszer reagál. A sebesség közben nem csökken.</p>
+                    
+                    <div class="bg-slate-900 p-2.5 rounded-lg font-mono text-xs text-amber-300 border border-slate-800 mb-2">
+                        s_r = v₀ · t_r
+                    </div>
+                    <div class="text-xs font-mono text-slate-300">
+                        Behelyettesítve:<br>
+                        <span id="mathSrCalc">13.89 m/s · 0.85 s = 11.81 m</span>
+                    </div>
+                </div>
+
+                <!-- 2. Fázis: Fékút -->
+                <div class="bg-slate-950/70 rounded-xl p-4 border border-red-500/20 relative">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs uppercase font-bold tracking-wider text-red-400">2. Szakasz: Fékezés</span>
+                        <i class="fa-solid fa-triangle-exclamation text-red-400/50"></i>
+                    </div>
+                    <h5 class="text-sm font-bold text-white mb-1">Egyenletesen lassuló mozgás</h5>
+                    <p class="text-xs text-slate-400 mb-3">A fékbetétek szorítják a tárcsákat, az abroncs és az út közötti súrlódási erő állandó lassulással fékezi a járművet.</p>
+                    
+                    <div class="bg-slate-900 p-2.5 rounded-lg font-mono text-xs text-red-300 border border-slate-800 mb-2">
+                        s_f = v₀² / (2 · a)
+                    </div>
+                    <div class="text-xs font-mono text-slate-300">
+                        Behelyettesítve:<br>
+                        <span id="mathSfCalc">(13.89 m/s)² / (2 · 7.5) = 12.86 m</span>
+                    </div>
+                </div>
+
+                <!-- 3. Fázis: Teljes Féktávolság -->
+                <div class="bg-slate-950/70 rounded-xl p-4 border border-sky-500/20 relative">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs uppercase font-bold tracking-wider text-sky-400">Összegzés</span>
+                        <i class="fa-solid fa-flag-checkered text-sky-400/50"></i>
+                    </div>
+                    <h5 class="text-sm font-bold text-white mb-1">Teljes megállási távolság</h5>
+                    <p class="text-xs text-slate-400 mb-3">A teljes távolság a veszély felbukkanásától a jármű álló helyzetéig az észlelési szakasz és a fékezés összege.</p>
+                    
+                    <div class="bg-slate-900 p-2.5 rounded-lg font-mono text-xs text-sky-300 border border-slate-800 mb-2">
+                        s_összes = s_r + s_f
+                    </div>
+                    <div class="text-xs font-mono text-slate-300">
+                        Összesen:<br>
+                        <span id="mathStotCalc">11.81 m + 12.86 m = 24.67 m</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Szemléletes tanulság táblázat -->
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col md:flex-row items-center gap-4 text-xs text-slate-300">
+                <div class="w-10 h-10 rounded-full bg-sky-500/10 text-sky-400 flex items-center justify-center shrink-0 text-lg">
+                    <i class="fa-solid fa-circle-info"></i>
+                </div>
+                <div class="space-y-1">
+                    <p class="font-semibold text-white">Fontos fizikai következtetés a közlekedésben:</p>
+                    <p class="text-slate-400">
+                        A sebesség megduplázásakor (pl. 50 km/h-ról 100 km/h-ra) a <b>reakcióút kétszeresére</b> nő, a <b>fékút viszont négyszeresére</b> növekszik a négyzetes összefüggés miatt (<span class="font-mono text-slate-200">v₀²</span>). Emiatt életveszélyes a gyorshajtás még kiváló útviszonyok mellett is!
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // --- Hangkezelő (Web Audio API szintetizált hangok, nincs külső fájlfüggőség) ---
+        class SoundFX {
+            constructor() {
+                this.enabled = true;
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) this.ctx = new AudioContext();
+                }
+            }
+            playBeep(freq = 600, duration = 0.08, type = 'sine') {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            }
+            playBrakeScreech() {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                    // Zajos frekvencia modulált sziszegés szimuláció
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(1400, this.ctx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(400, this.ctx.currentTime + 0.5);
+                    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.5);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.5);
+                } catch(e) {}
+            }
+            playAlert() {
+                if (!this.enabled) return;
+                this.playBeep(880, 0.15, 'square');
+            }
+        }
+
+        const sfx = new SoundFX();
+
+        // Hang ki/bekapcsolása
+        const soundToggle = document.getElementById('soundToggle');
+        const soundIcon = document.getElementById('soundIcon');
+        const soundLabel = document.getElementById('soundLabel');
+        soundToggle.addEventListener('click', () => {
+            sfx.enabled = !sfx.enabled;
+            if (sfx.enabled) {
+                soundIcon.className = "fa-solid fa-volume-high text-sky-400";
+                soundLabel.innerText = "Hangok: Be";
+            } else {
+                soundIcon.className = "fa-solid fa-volume-xmark text-slate-500";
+                soundLabel.innerText = "Hangok: Ki";
+            }
+        });
+
+        // --- Bemeneti állapotok és globális változók ---
+        let state = {
+            v0_kmh: 50,         // km/h
+            v0_ms: 50 / 3.6,    // m/s
+            a: 7.5,             // m/s^2
+            tr: 0.85,           // másodperc
+            
+            // Számított értékek
+            sr: 0,              // reakcióút (m)
+            sf: 0,              // fékút (m)
+            stot: 0,            // össztáv (m)
+            tb: 0,              // fékezési idő: v0 / a (s)
+            ttot: 0,            // összidő: tr + tb (s)
+
+            // Szimuláció futási állapota
+            simRunning: false,
+            simStartTime: 0,
+            simCurrentTime: 0,
+            simPhase: 'idle'    // 'idle', 'reaction', 'braking', 'stopped'
+        };
+
+        // --- DOM elemek referenciái ---
+        const speedInput = document.getElementById('speedInput');
+        const speedKmhDisplay = document.getElementById('speedKmhDisplay');
+        const speedMsDisplay = document.getElementById('speedMsDisplay');
+
+        const accelInput = document.getElementById('accelInput');
+        const accelDisplay = document.getElementById('accelDisplay');
+
+        const reactInput = document.getElementById('reactInput');
+        const reactDisplay = document.getElementById('reactDisplay');
+
+        const statSrBadge = document.getElementById('statSrBadge');
+        const statSfBadge = document.getElementById('statSfBadge');
+        const statStotBadge = document.getElementById('statStotBadge');
+
+        const liveTime = document.getElementById('liveTime');
+        const liveSpeed = document.getElementById('liveSpeed');
+        const liveDist = document.getElementById('liveDist');
+        const liveStatus = document.getElementById('liveStatus');
+
+        const mathSrCalc = document.getElementById('mathSrCalc');
+        const mathSfCalc = document.getElementById('mathSfCalc');
+        const mathStotCalc = document.getElementById('mathStotCalc');
+
+        const startSimBtn = document.getElementById('startSimBtn');
+        const resetSimBtn = document.getElementById('resetSimBtn');
+
+        // Canvases
+        const roadCanvas = document.getElementById('roadCanvas');
+        const roadCtx = roadCanvas.getContext('2d');
+        const stCanvas = document.getElementById('stGraphCanvas');
+        const stCtx = stCanvas.getContext('2d');
+        const vtCanvas = document.getElementById('vtGraphCanvas');
+        const vtCtx = vtCanvas.getContext('2d');
+
+        function calculatePhysics() {
+            state.v0_ms = state.v0_kmh / 3.6;
+            state.sr = state.v0_ms * state.tr;
+            state.sf = (state.v0_ms * state.v0_ms) / (2 * state.a);
+            state.stot = state.sr + state.sf;
+            state.tb = state.v0_ms / state.a;
+            state.ttot = state.tr + state.tb;
+
+            // UI Frissítés
+            speedKmhDisplay.innerText = state.v0_kmh.toFixed(0);
+            speedMsDisplay.innerText = state.v0_ms.toFixed(2) + " m/s";
+            accelDisplay.innerText = state.a.toFixed(1);
+            reactDisplay.innerText = state.tr.toFixed(2);
+
+            statSrBadge.innerText = state.sr.toFixed(1);
+            statSfBadge.innerText = state.sf.toFixed(1);
+            statStotBadge.innerText = state.stot.toFixed(1);
+
+            // Képletes dobozok frissítése
+            mathSrCalc.innerHTML = `${state.v0_ms.toFixed(2)} m/s · ${state.tr.toFixed(2)} s = <b>${state.sr.toFixed(2)} m</b>`;
+            mathSfCalc.innerHTML = `(${state.v0_ms.toFixed(2)} m/s)² / (2 · ${state.a.toFixed(1)}) = <b>${state.sf.toFixed(2)} m</b>`;
+            mathStotCalc.innerHTML = `${state.sr.toFixed(2)} m + ${state.sf.toFixed(2)} m = <b>${state.stot.toFixed(2)} m</b>`;
+
+            if (!state.simRunning) {
+                renderAll();
+            }
+        }
+
+        // Bemeneti vezérlők eseményei
+        speedInput.addEventListener('input', (e) => {
+            state.v0_kmh = parseFloat(e.target.value);
+            calculatePhysics();
+        });
+
+        accelInput.addEventListener('input', (e) => {
+            state.a = parseFloat(e.target.value);
+            calculatePhysics();
+        });
+
+        reactInput.addEventListener('input', (e) => {
+            state.tr = parseFloat(e.target.value);
+            calculatePhysics();
+        });
+
+        window.setSpeed = function(val) {
+            speedInput.value = val;
+            state.v0_kmh = val;
+            calculatePhysics();
+        };
+
+        window.setDecel = function(val) {
+            accelInput.value = val;
+            state.a = val;
+            calculatePhysics();
+        };
+
+        // --- Reflex teszt logika ---
+        let reflexTimer = null;
+        let reflexStartTime = 0;
+        let reflexState = 'idle'; // 'idle', 'countdown', 'waiting', 'active', 'ended'
+        const reflexArea = document.getElementById('reflexArea');
+        const reflexIdleContent = document.getElementById('reflexIdleContent');
+        const reflexCountdown = document.getElementById('reflexCountdown');
+        const countNumber = document.getElementById('countNumber');
+        const reflexWaiting = document.getElementById('reflexWaiting');
+        const reflexObstacle = document.getElementById('reflexObstacle');
+        const obstacleVisual = document.getElementById('obstacleVisual');
+        const reflexEarlyWarn = document.getElementById('reflexEarlyWarn');
+        const startReflexBtn = document.getElementById('startReflexBtn');
+        const triggerBrakeBtn = document.getElementById('triggerBrakeBtn');
+        const reflexResultBanner = document.getElementById('reflexResultBanner');
+        const measuredTimeText = document.getElementById('measuredTimeText');
+        const applyReflexBtn = document.getElementById('applyReflexBtn');
+
+        let lastMeasuredReaction = 0.85;
+
+        const obstaclesList = [
+            { icon: 'fa-solid fa-child text-red-400 text-5xl', name: 'Úttestre szaladó gyalogos!' },
+            { icon: 'fa-solid fa-triangle-exclamation text-amber-400 text-5xl', name: 'STOP akadály az úton!' },
+            { icon: 'fa-solid fa-deer text-emerald-400 text-5xl', name: 'Vadállat / Szarvas!' },
+            { icon: 'fa-solid fa-truck-monster text-rose-500 text-5xl', name: 'Váratlanul fékező teherautó!' }
+        ];
+
+        function resetReflexUI() {
+            clearTimeout(reflexTimer);
+            reflexState = 'idle';
+            reflexIdleContent.classList.remove('hidden');
+            reflexCountdown.classList.add('hidden');
+            reflexWaiting.classList.add('hidden');
+            reflexObstacle.classList.add('hidden');
+            reflexEarlyWarn.classList.add('hidden');
+            triggerBrakeBtn.disabled = true;
+            triggerBrakeBtn.classList.remove('bg-red-600', 'pulse-danger', 'cursor-pointer');
+            triggerBrakeBtn.classList.add('bg-red-600/50', 'cursor-not-allowed');
+            startReflexBtn.disabled = false;
+        }
+
+        function startReflexSequence() {
+            sfx.init();
+            resetReflexUI();
+            reflexState = 'countdown';
+            reflexIdleContent.classList.add('hidden');
+            reflexCountdown.classList.remove('hidden');
+            startReflexBtn.disabled = true;
+            
+            triggerBrakeBtn.disabled = false;
+            triggerBrakeBtn.classList.remove('bg-red-600/50', 'cursor-not-allowed');
+            triggerBrakeBtn.classList.add('bg-red-600', 'cursor-pointer');
+
+            let count = 3;
+            countNumber.innerText = count;
+            sfx.playBeep(450, 0.08);
+
+            const counterInterval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countNumber.innerText = count;
+                    sfx.playBeep(450, 0.08);
+                } else {
+                    clearInterval(counterInterval);
+                    reflexCountdown.classList.add('hidden');
+                    reflexWaiting.classList.remove('hidden');
+                    reflexState = 'waiting';
+
+                    // Véletlenszerű várakozás 1.4 és 3.8 másodperc között
+                    const randomDelay = 1400 + Math.random() * 2400;
+                    reflexTimer = setTimeout(() => {
+                        triggerObstacleAppearance();
+                    }, randomDelay);
+                }
+            }, 750);
+        }
+
+        function triggerObstacleAppearance() {
+            reflexState = 'active';
+            reflexWaiting.classList.add('hidden');
+            
+            // Random akadály kiválasztása
+            const chosen = obstaclesList[Math.floor(Math.random() * obstaclesList.length)];
+            obstacleVisual.innerHTML = `<i class="${chosen.icon}"></i><div class="text-xs font-semibold text-slate-200 mt-1">${chosen.name}</div>`;
+            
+            reflexObstacle.classList.remove('hidden');
+            triggerBrakeBtn.classList.add('pulse-danger');
+            
+            sfx.playAlert();
+            reflexStartTime = performance.now();
+        }
+
+        function handleUserBrakeInput() {
+            if (reflexState === 'waiting' || reflexState === 'countdown') {
+                // Túl korai nyomás!
+                clearTimeout(reflexTimer);
+                reflexState = 'ended';
+                reflexWaiting.classList.add('hidden');
+                reflexCountdown.classList.add('hidden');
+                reflexEarlyWarn.classList.remove('hidden');
+                sfx.playBeep(220, 0.3, 'sawtooth');
+                triggerBrakeBtn.disabled = true;
+                triggerBrakeBtn.classList.remove('pulse-danger');
+                startReflexBtn.disabled = false;
+                return;
+            }
+
+            if (reflexState === 'active') {
+                const reactionMs = performance.now() - reflexStartTime;
+                const reactionSec = reactionMs / 1000;
+                lastMeasuredReaction = parseFloat(reactionSec.toFixed(3));
+                reflexState = 'ended';
+                sfx.playBrakeScreech();
+
+                measuredTimeText.innerText = `${lastMeasuredReaction.toFixed(3)} s (${reactionMs.toFixed(0)} ms)`;
+                reflexResultBanner.classList.remove('hidden');
+                triggerBrakeBtn.classList.remove('pulse-danger');
+                triggerBrakeBtn.disabled = true;
+                startReflexBtn.disabled = false;
+
+                // Szöveges visszajelzés
+                let rating = "Kiváló reflexek!";
+                if (lastMeasuredReaction > 1.2) rating = "Kissé lassú észlelés!";
+                else if (lastMeasuredReaction > 0.8) rating = "Átlagos reakcióidő.";
+                
+                obstacleVisual.innerHTML += `<div class="mt-2 text-xs font-bold text-emerald-400 bg-slate-900/90 py-1 px-3 rounded-full border border-emerald-500/30">${rating} Mért idő: ${lastMeasuredReaction.toFixed(3)} s</div>`;
+            }
+        }
+
+        startReflexBtn.addEventListener('click', startReflexSequence);
+        triggerBrakeBtn.addEventListener('click', handleUserBrakeInput);
+        reflexArea.addEventListener('click', () => {
+            if (reflexState === 'active' || reflexState === 'waiting') {
+                handleUserBrakeInput();
+            }
+        });
+
+        // Billentyűzet kezelés (Szóköz)
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && (reflexState === 'active' || reflexState === 'waiting')) {
+                e.preventDefault();
+                handleUserBrakeInput();
+            }
+        });
+
+        applyReflexBtn.addEventListener('click', () => {
+            if (lastMeasuredReaction > 0) {
+                state.tr = Math.min(2.5, Math.max(0.2, lastMeasuredReaction));
+                reactInput.value = state.tr;
+                calculatePhysics();
+                applyReflexBtn.innerText = "Beállítva! ✓";
+                setTimeout(() => { applyReflexBtn.innerText = "Érték Átvétele"; }, 1500);
+            }
+        });
+
+        function resizeCanvases() {
+            const dpr = window.devicePixelRatio || 1;
+            [roadCanvas, stCanvas, vtCanvas].forEach(canvas => {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                const ctx = canvas.getContext('2d');
+                ctx.resetTransform?.();
+                ctx.scale(dpr, dpr);
+            });
+            renderAll();
+        }
+        window.addEventListener('resize', resizeCanvases);
+
+        function getKinematicsAt(t) {
+            // Pillanatnyi s, v állapot egy adott t időben
+            let s = 0;
+            let v = 0;
+            let phase = 'idle';
+
+            if (t <= 0) {
+                return { s: 0, v: state.v0_ms, phase: 'reaction' };
+            }
+
+            if (t <= state.tr) {
+                // Reakcióidő alatt egyenletes haladás
+                s = state.v0_ms * t;
+                v = state.v0_ms;
+                phase = 'reaction';
+            } else if (t < state.ttot) {
+                // Fékezési fázis
+                const dt = t - state.tr;
+                s = state.sr + (state.v0_ms * dt) - (0.5 * state.a * dt * dt);
+                v = Math.max(0, state.v0_ms - state.a * dt);
+                phase = 'braking';
+            } else {
+                // Megállt
+                s = state.stot;
+                v = 0;
+                phase = 'stopped';
+            }
+
+            return { s, v, phase };
+        }
+
+        function drawRoad(tNorm = 0) {
+            const w = roadCanvas.clientWidth;
+            const h = roadCanvas.clientHeight;
+            roadCtx.clearRect(0, 0, w, h);
+
+            // Égbolt és horizont
+            const skyGrad = roadCtx.createLinearGradient(0, 0, 0, h * 0.45);
+            skyGrad.addColorStop(0, '#020617');
+            skyGrad.addColorStop(1, '#0f172a');
+            roadCtx.fillStyle = skyGrad;
+            roadCtx.fillRect(0, 0, w, h * 0.45);
+
+            // Távoli dombok / tereptárgyak
+            roadCtx.fillStyle = '#1e293b';
+            roadCtx.beginPath();
+            roadCtx.moveTo(0, h * 0.45);
+            roadCtx.quadraticCurveTo(w * 0.25, h * 0.35, w * 0.5, h * 0.45);
+            roadCtx.quadraticCurveTo(w * 0.75, h * 0.38, w, h * 0.45);
+            roadCtx.lineTo(w, h * 0.45);
+            roadCtx.fill();
+
+            // Úttest aszfaltja
+            const roadY = h * 0.45;
+            const roadH = h * 0.55;
+            roadCtx.fillStyle = '#181e29';
+            roadCtx.fillRect(0, roadY, w, roadH);
+
+            // Útpadka és szegélyvonalak
+            roadCtx.fillStyle = '#334155';
+            roadCtx.fillRect(0, roadY, w, 4);
+            roadCtx.fillStyle = '#475569';
+            roadCtx.fillRect(0, h - 8, w, 8);
+
+            // Szaggatott felezővonal
+            roadCtx.strokeStyle = '#94a3b8';
+            roadCtx.setLineDash([16, 14]);
+            roadCtx.lineWidth = 3;
+            roadCtx.beginPath();
+            roadCtx.moveTo(0, roadY + roadH * 0.55);
+            roadCtx.lineTo(w, roadY + roadH * 0.55);
+            roadCtx.stroke();
+            roadCtx.setLineDash([]);
+
+            // Léptékezés (méter -> pixel)
+            // Hagyjunk 50px margót balról, és a max megállási távolság illeszkedjen kényelmesen
+            const leftMargin = 45;
+            const rightMargin = 75;
+            const availableW = w - leftMargin - rightMargin;
+            
+            // Biztosítsuk, hogy minimum 30 méter mindig kiférjen, vagy a max féktáv + 15%
+            const maxMetersView = Math.max(35, state.stot * 1.15);
+            const meterToPx = (m) => leftMargin + (m / maxMetersView) * availableW;
+
+            // Útjelölések méterben (5m vagy 10m-es osztásokkal)
+            roadCtx.fillStyle = '#64748b';
+            roadCtx.font = '10px "JetBrains Mono", monospace';
+            const stepMeters = maxMetersView > 80 ? 20 : 10;
+            for (let m = 0; m <= maxMetersView; m += stepMeters) {
+                const px = meterToPx(m);
+                roadCtx.fillRect(px, roadY + roadH - 12, 1, 8);
+                roadCtx.fillText(m + 'm', px - 8, roadY + roadH - 16);
+            }
+
+            // Szakaszjelölők a pályán: Reakcióút és Fékút szalag
+            const xStart = meterToPx(0);
+            const xReactEnd = meterToPx(state.sr);
+            const xBrakeEnd = meterToPx(state.stot);
+            const barY = roadY + 12;
+
+            // 1. Reakcióút szakasz (Sárga)
+            roadCtx.fillStyle = 'rgba(251, 191, 36, 0.25)';
+            roadCtx.fillRect(xStart, barY, xReactEnd - xStart, 16);
+            roadCtx.strokeStyle = '#f59e0b';
+            roadCtx.lineWidth = 1.5;
+            roadCtx.strokeRect(xStart, barY, xReactEnd - xStart, 16);
+
+            roadCtx.fillStyle = '#fbbf24';
+            roadCtx.font = 'bold 9px Inter, sans-serif';
+            roadCtx.fillText(`Reakcióút: ${state.sr.toFixed(1)}m`, xStart + 4, barY + 12);
+
+            // 2. Fékút szakasz (Piros)
+            roadCtx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+            roadCtx.fillRect(xReactEnd, barY, xBrakeEnd - xReactEnd, 16);
+            roadCtx.strokeStyle = '#ef4444';
+            roadCtx.lineWidth = 1.5;
+            roadCtx.strokeRect(xReactEnd, barY, xBrakeEnd - xReactEnd, 16);
+
+            roadCtx.fillStyle = '#f87171';
+            roadCtx.fillText(`Fékút: ${state.sf.toFixed(1)}m`, xReactEnd + 4, barY + 12);
+
+            // Célobjektum / STOP tábla a teljes távolságnál
+            const stopSignX = xBrakeEnd;
+            const stopSignY = roadY + roadH * 0.35;
+            
+            // STOP tábla rúdja
+            roadCtx.fillStyle = '#94a3b8';
+            roadCtx.fillRect(stopSignX + 18, stopSignY - 25, 3, 35);
+            // Tábla feje (oktogon)
+            roadCtx.fillStyle = '#ef4444';
+            roadCtx.beginPath();
+            roadCtx.arc(stopSignX + 19, stopSignY - 32, 13, 0, Math.PI * 2);
+            roadCtx.fill();
+            roadCtx.strokeStyle = '#ffffff';
+            roadCtx.lineWidth = 1.5;
+            roadCtx.stroke();
+            roadCtx.fillStyle = '#ffffff';
+            roadCtx.font = 'bold 8px Inter, sans-serif';
+            roadCtx.textAlign = 'center';
+            roadCtx.fillText('STOP', stopSignX + 19, stopSignY - 29);
+            roadCtx.textAlign = 'start';
+
+            // Autó rajzolása az aktuális pozícióban
+            const curState = getKinematicsAt(tNorm);
+            const carX = meterToPx(curState.s);
+            const carY = roadY + roadH * 0.42;
+
+            drawCar(carX, carY, curState.phase);
+
+            // Ha fékez, féknyom és füst
+            if (curState.phase === 'braking' || (curState.phase === 'stopped' && state.simCurrentTime >= state.tr)) {
+                roadCtx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+                const skidStart = xReactEnd;
+                const skidEnd = Math.min(carX, xBrakeEnd);
+                if (skidEnd > skidStart) {
+                    roadCtx.fillRect(skidStart, carY + 18, skidEnd - skidStart, 3);
+                    roadCtx.fillRect(skidStart, carY + 23, skidEnd - skidStart, 3);
+                }
+            }
+        }
+
+        function drawCar(x, y, phase) {
+            roadCtx.save();
+            roadCtx.translate(x, y);
+
+            // Fékjelző fények piros fékezéskor
+            const isBraking = phase === 'braking';
+            
+            // Autó teste
+            roadCtx.fillStyle = '#0284c7'; // modern sportos kék
+            roadCtx.beginPath();
+            // Aerodinamikus karosszéria
+            roadCtx.roundRect(-24, 0, 48, 16, [4, 8, 2, 2]);
+            roadCtx.fill();
+
+            // Kabin / Ablakok
+            roadCtx.fillStyle = '#0f172a';
+            roadCtx.beginPath();
+            roadCtx.roundRect(-12, -10, 26, 11, [4, 6, 0, 0]);
+            roadCtx.fill();
+
+            // Szélvédő üvegfény
+            roadCtx.fillStyle = '#38bdf8';
+            roadCtx.beginPath();
+            roadCtx.moveTo(2, -8);
+            roadCtx.lineTo(11, -2);
+            roadCtx.lineTo(2, -2);
+            roadCtx.fill();
+
+            // Első fényszóró
+            roadCtx.fillStyle = '#fef08a';
+            roadCtx.fillRect(20, 4, 4, 5);
+
+            // Hátsó lámpa (Féklámpa izzás)
+            if (isBraking) {
+                roadCtx.shadowColor = '#ef4444';
+                roadCtx.shadowBlur = 12;
+                roadCtx.fillStyle = '#ff2222';
+            } else {
+                roadCtx.fillStyle = '#991b1b';
+            }
+            roadCtx.fillRect(-24, 4, 3, 6);
+            roadCtx.shadowBlur = 0;
+
+            // Kerekek
+            roadCtx.fillStyle = '#111827';
+            // Hátsó kerék
+            roadCtx.beginPath();
+            roadCtx.arc(-14, 15, 6, 0, Math.PI * 2);
+            roadCtx.fill();
+            roadCtx.fillStyle = '#94a3b8';
+            roadCtx.beginPath();
+            roadCtx.arc(-14, 15, 2.5, 0, Math.PI * 2);
+            roadCtx.fill();
+
+            // Első kerék
+            roadCtx.fillStyle = '#111827';
+            roadCtx.beginPath();
+            roadCtx.arc(14, 15, 6, 0, Math.PI * 2);
+            roadCtx.fill();
+            roadCtx.fillStyle = '#94a3b8';
+            roadCtx.beginPath();
+            roadCtx.arc(14, 15, 2.5, 0, Math.PI * 2);
+            roadCtx.fill();
+
+            // Fékezési füst effekt ha csúszik
+            if (isBraking && Math.random() > 0.4) {
+                roadCtx.fillStyle = 'rgba(203, 213, 225, 0.45)';
+                roadCtx.beginPath();
+                roadCtx.arc(-26 - Math.random() * 8, 12 - Math.random() * 6, 4 + Math.random() * 4, 0, Math.PI * 2);
+                roadCtx.fill();
+            }
+
+            roadCtx.restore();
+        }
+
+        function drawSTGraph(currentT = 0) {
+            const w = stCanvas.clientWidth;
+            const h = stCanvas.clientHeight;
+            stCtx.clearRect(0, 0, w, h);
+
+            const padL = 40, padR = 25, padT = 20, padB = 30;
+            const plotW = w - padL - padR;
+            const plotH = h - padT - padB;
+
+            const maxT = Math.max(4.0, state.ttot * 1.15);
+            const maxS = Math.max(30, state.stot * 1.15);
+
+            const tToX = (t) => padL + (t / maxT) * plotW;
+            const sToY = (s) => padT + plotH - (s / maxS) * plotH;
+
+            // Rácsvonalak
+            stCtx.strokeStyle = '#1e293b';
+            stCtx.lineWidth = 1;
+            for (let sec = 0; sec <= maxT; sec += 1) {
+                const x = tToX(sec);
+                stCtx.beginPath();
+                stCtx.moveTo(x, padT);
+                stCtx.lineTo(x, padT + plotH);
+                stCtx.stroke();
+                stCtx.fillStyle = '#64748b';
+                stCtx.font = '9px "JetBrains Mono"';
+                stCtx.fillText(sec + 's', x - 6, padT + plotH + 14);
+            }
+
+            for (let dist = 0; dist <= maxS; dist += (maxS > 80 ? 25 : 10)) {
+                const y = sToY(dist);
+                stCtx.beginPath();
+                stCtx.moveTo(padL, y);
+                stCtx.lineTo(padL + plotW, y);
+                stCtx.stroke();
+                stCtx.fillStyle = '#64748b';
+                stCtx.font = '9px "JetBrains Mono"';
+                stCtx.fillText(dist + 'm', 4, y + 3);
+            }
+
+            // Tengelyek
+            stCtx.strokeStyle = '#475569';
+            stCtx.lineWidth = 1.5;
+            stCtx.beginPath();
+            stCtx.moveTo(padL, padT);
+            stCtx.lineTo(padL, padT + plotH);
+            stCtx.lineTo(padL + plotW, padT + plotH);
+            stCtx.stroke();
+
+            // Reakcióidő határvonal függőlegesen
+            const tReactX = tToX(state.tr);
+            stCtx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+            stCtx.setLineDash([4, 4]);
+            stCtx.beginPath();
+            stCtx.moveTo(tReactX, padT);
+            stCtx.lineTo(tReactX, padT + plotH);
+            stCtx.stroke();
+            stCtx.setLineDash([]);
+
+            // Görbe rajzolása
+            stCtx.lineWidth = 2.5;
+
+            // 1. Szakasz: Egyenes vonal (0 -> tr)
+            stCtx.strokeStyle = '#fbbf24';
+            stCtx.beginPath();
+            stCtx.moveTo(tToX(0), sToY(0));
+            stCtx.lineTo(tToX(state.tr), sToY(state.sr));
+            stCtx.stroke();
+
+            // 2. Szakasz: Parabola (tr -> ttot)
+            stCtx.strokeStyle = '#ef4444';
+            stCtx.beginPath();
+            stCtx.moveTo(tToX(state.tr), sToY(state.sr));
+            const steps = 40;
+            for (let i = 1; i <= steps; i++) {
+                const curTime = state.tr + (state.tb * (i / steps));
+                const res = getKinematicsAt(curTime);
+                stCtx.lineTo(tToX(curTime), sToY(res.s));
+            }
+            stCtx.stroke();
+
+            // 3. Szakasz: Álló jármű vízszintes egyenes (ttot -> maxT)
+            stCtx.strokeStyle = '#64748b';
+            stCtx.setLineDash([3, 3]);
+            stCtx.beginPath();
+            stCtx.moveTo(tToX(state.ttot), sToY(state.stot));
+            stCtx.lineTo(tToX(maxT), sToY(state.stot));
+            stCtx.stroke();
+            stCtx.setLineDash([]);
+
+            // Futó pont animáció közben
+            if (currentT >= 0) {
+                const kin = getKinematicsAt(currentT);
+                const curX = tToX(Math.min(currentT, maxT));
+                const curY = sToY(kin.s);
+
+                stCtx.fillStyle = '#38bdf8';
+                stCtx.shadowColor = '#38bdf8';
+                stCtx.shadowBlur = 8;
+                stCtx.beginPath();
+                stCtx.arc(curX, curY, 5, 0, Math.PI * 2);
+                stCtx.fill();
+                stCtx.shadowBlur = 0;
+            }
+        }
+
+        function drawVTGraph(currentT = 0) {
+            const w = vtCanvas.clientWidth;
+            const h = vtCanvas.clientHeight;
+            vtCtx.clearRect(0, 0, w, h);
+
+            const padL = 40, padR = 25, padT = 20, padB = 30;
+            const plotW = w - padL - padR;
+            const plotH = h - padT - padB;
+
+            const maxT = Math.max(4.0, state.ttot * 1.15);
+            const maxV = Math.max(15, state.v0_ms * 1.2);
+
+            const tToX = (t) => padL + (t / maxT) * plotW;
+            const vToY = (v) => padT + plotH - (v / maxV) * plotH;
+
+            // Rács
+            vtCtx.strokeStyle = '#1e293b';
+            vtCtx.lineWidth = 1;
+            for (let sec = 0; sec <= maxT; sec += 1) {
+                const x = tToX(sec);
+                vtCtx.beginPath();
+                vtCtx.moveTo(x, padT);
+                vtCtx.lineTo(x, padT + plotH);
+                vtCtx.stroke();
+                vtCtx.fillStyle = '#64748b';
+                vtCtx.font = '9px "JetBrains Mono"';
+                vtCtx.fillText(sec + 's', x - 6, padT + plotH + 14);
+            }
+
+            for (let vel = 0; vel <= maxV; vel += 5) {
+                const y = vToY(vel);
+                vtCtx.beginPath();
+                vtCtx.moveTo(padL, y);
+                vtCtx.lineTo(padL + plotW, y);
+                vtCtx.stroke();
+                vtCtx.fillStyle = '#64748b';
+                vtCtx.font = '9px "JetBrains Mono"';
+                vtCtx.fillText(vel + 'm/s', 2, y + 3);
+            }
+
+            // Tengelyek
+            vtCtx.strokeStyle = '#475569';
+            vtCtx.lineWidth = 1.5;
+            vtCtx.beginPath();
+            vtCtx.moveTo(padL, padT);
+            vtCtx.lineTo(padL, padT + plotH);
+            vtCtx.lineTo(padL + plotW, padT + plotH);
+            vtCtx.stroke();
+
+            // Reakcióidő fázis: Terület kitöltése (Ez adja az utat!)
+            vtCtx.fillStyle = 'rgba(245, 158, 11, 0.15)';
+            vtCtx.beginPath();
+            vtCtx.moveTo(tToX(0), vToY(0));
+            vtCtx.lineTo(tToX(0), vToY(state.v0_ms));
+            vtCtx.lineTo(tToX(state.tr), vToY(state.v0_ms));
+            vtCtx.lineTo(tToX(state.tr), vToY(0));
+            vtCtx.fill();
+
+            // Fékezési háromszög terület kitöltése (Fékút)
+            vtCtx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+            vtCtx.beginPath();
+            vtCtx.moveTo(tToX(state.tr), vToY(0));
+            vtCtx.lineTo(tToX(state.tr), vToY(state.v0_ms));
+            vtCtx.lineTo(tToX(state.ttot), vToY(0));
+            vtCtx.fill();
+
+            // Vonalak rajzolása
+            vtCtx.lineWidth = 2.5;
+
+            // 1. Konstans v0
+            vtCtx.strokeStyle = '#fbbf24';
+            vtCtx.beginPath();
+            vtCtx.moveTo(tToX(0), vToY(state.v0_ms));
+            vtCtx.lineTo(tToX(state.tr), vToY(state.v0_ms));
+            vtCtx.stroke();
+
+            // 2. Lineáris csökkenés (meredekség: -a)
+            vtCtx.strokeStyle = '#ef4444';
+            vtCtx.beginPath();
+            vtCtx.moveTo(tToX(state.tr), vToY(state.v0_ms));
+            vtCtx.lineTo(tToX(state.ttot), vToY(0));
+            vtCtx.stroke();
+
+            // 3. Nulla sebesség a megállás után
+            vtCtx.strokeStyle = '#64748b';
+            vtCtx.setLineDash([3, 3]);
+            vtCtx.beginPath();
+            vtCtx.moveTo(tToX(state.ttot), vToY(0));
+            vtCtx.lineTo(tToX(maxT), vToY(0));
+            vtCtx.stroke();
+            vtCtx.setLineDash([]);
+
+            // Futó pont animáció közben
+            if (currentT >= 0) {
+                const kin = getKinematicsAt(currentT);
+                const curX = tToX(Math.min(currentT, maxT));
+                const curY = vToY(kin.v);
+
+                vtCtx.fillStyle = '#38bdf8';
+                vtCtx.shadowColor = '#38bdf8';
+                vtCtx.shadowBlur = 8;
+                vtCtx.beginPath();
+                vtCtx.arc(curX, curY, 5, 0, Math.PI * 2);
+                vtCtx.fill();
+                vtCtx.shadowBlur = 0;
+            }
+        }
+
+        function renderAll(t = 0) {
+            drawRoad(t);
+            drawSTGraph(t);
+            drawVTGraph(t);
+        }
+
+        let animFrameId = null;
+        let lastPhaseAudio = 'idle';
+
+        function simulationLoop(timestamp) {
+            if (!state.simRunning) return;
+
+            if (!state.simStartTime) state.simStartTime = timestamp;
+            const elapsed = (timestamp - state.simStartTime) / 1000;
+            state.simCurrentTime = elapsed;
+
+            const currentKinematics = getKinematicsAt(elapsed);
+
+            // Hang effekt kezelése fázisváltáskor
+            if (currentKinematics.phase === 'braking' && lastPhaseAudio !== 'braking') {
+                sfx.playBrakeScreech();
+                lastPhaseAudio = 'braking';
+            }
+
+            // UI Statisztikák frissítése
+            liveTime.innerText = elapsed.toFixed(2);
+            liveSpeed.innerText = (currentKinematics.v * 3.6).toFixed(1);
+            liveDist.innerText = currentKinematics.s.toFixed(1);
+
+            if (currentKinematics.phase === 'reaction') {
+                liveStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span> <span class="text-amber-400">Reakcióidő (Egyenletes)</span>';
+            } else if (currentKinematics.phase === 'braking') {
+                liveStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> <span class="text-red-400 font-bold">Fékezés (Lassulás)</span>';
+            } else if (currentKinematics.phase === 'stopped') {
+                liveStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> <span class="text-emerald-400 font-bold">Megállt</span>';
+            }
+
+            // Újrarajzolás
+            renderAll(elapsed);
+
+            // Befejezés, ha a megállás után még várunk egy kis ideig
+            if (elapsed >= state.ttot + 0.4) {
+                state.simRunning = false;
+                startSimBtn.innerHTML = '<i class="fa-solid fa-play"></i> Újraindítás';
+                return;
+            }
+
+            animFrameId = requestAnimationFrame(simulationLoop);
+        }
+
+        startSimBtn.addEventListener('click', () => {
+            sfx.init();
+            cancelAnimationFrame(animFrameId);
+            state.simRunning = true;
+            state.simStartTime = 0;
+            state.simCurrentTime = 0;
+            lastPhaseAudio = 'idle';
+            startSimBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Futásban...';
+            animFrameId = requestAnimationFrame(simulationLoop);
+        });
+
+        resetSimBtn.addEventListener('click', () => {
+            cancelAnimationFrame(animFrameId);
+            state.simRunning = false;
+            state.simStartTime = 0;
+            state.simCurrentTime = 0;
+            lastPhaseAudio = 'idle';
+
+            liveTime.innerText = "0.00";
+            liveSpeed.innerText = state.v0_kmh.toFixed(1);
+            liveDist.innerText = "0.0";
+            liveStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-slate-500"></span> Készenlét';
+            startSimBtn.innerHTML = '<i class="fa-solid fa-play"></i> Szimuláció Indítása';
+
+            renderAll(0);
+        });
+
+        window.onload = function() {
+            calculatePhysics();
+            resizeCanvases();
+        };
+    </script>
+</body>
+</html>
