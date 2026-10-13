@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Féktávolság és Lassuló Mozgás Szimulátor</title>
+    <title>Lassuló mozgás szimulátor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -154,7 +154,7 @@
                 <!-- Szimuláció indításvezérlő -->
                 <div class="pt-4 mt-4 border-t border-slate-800 flex flex-wrap items-center gap-3">
                     <button id="startSimBtn" class="flex-1 min-w-[160px] py-3 px-5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-sm shadow-lg shadow-sky-500/25 flex items-center justify-center gap-2 transition transform active:scale-95">
-                        <i class="fa-solid fa-play"></i> Szimuláció Indítása
+                        <i class="fa-solid fa-play"></i> Szimuláció indítása
                     </button>
                     <button id="resetSimBtn" class="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium text-sm flex items-center gap-2 transition">
                         <i class="fa-solid fa-rotate-left"></i> Alaphelyzet
@@ -167,7 +167,7 @@
                 <div>
                     <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
                         <h2 class="text-base font-semibold text-white flex items-center gap-2">
-                            <i class="fa-solid fa-bolt text-yellow-400"></i> Reflexteszt Modul
+                            <i class="fa-solid fa-bolt text-yellow-400"></i> Reflexteszt
                         </h2>
                         <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">Valós mérés</span>
                     </div>
@@ -181,7 +181,7 @@
                             <div class="w-12 h-12 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-xl">
                                 <i class="fa-solid fa-hand-pointer"></i>
                             </div>
-                            <div class="text-sm font-medium text-slate-300">Kattints a "Teszt Indítása" gombra!</div>
+                            <div class="text-sm font-medium text-slate-300">Kattints a "Teszt indítása" gombra!</div>
                             <div class="text-xs text-slate-500">Mérd fel saját észlelési és cselekvési késedelmedet</div>
                         </div>
 
@@ -216,7 +216,7 @@
                 <div class="pt-4 mt-2 space-y-3">
                     <div class="flex items-center gap-2">
                         <button id="startReflexBtn" class="flex-1 py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm flex items-center justify-center gap-2 transition">
-                            <i class="fa-solid fa-stopwatch"></i> Teszt Indítása
+                            <i class="fa-solid fa-stopwatch"></i> Teszt indítása
                         </button>
                         <button id="triggerBrakeBtn" disabled class="flex-1 py-2.5 px-3 rounded-lg bg-red-600/50 cursor-not-allowed text-white font-bold text-sm flex items-center justify-center gap-2 transition shadow-lg">
                             <i class="fa-solid fa-hand"></i> FÉK! (Szóköz)
@@ -229,7 +229,7 @@
                             <span id="measuredTimeText" class="text-xl font-mono font-extrabold text-emerald-400">0.000 s</span>
                         </div>
                         <button id="applyReflexBtn" class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow transition">
-                            Érték Átvétele
+                            Érték átvétele
                         </button>
                     </div>
                 </div>
@@ -244,7 +244,7 @@
                         <i class="fa-solid fa-film"></i>
                     </span>
                     <div>
-                        <h3 class="text-base font-semibold text-white">Élő Fizikai Animáció & Útpálya</h3>
+                        <h3 class="text-base font-semibold text-white">Élő fizikai animáció</h3>
                         <p class="text-xs text-slate-400">Szemlélteti a reakcióutat és a fékezési szakaszt egymáshoz viszonyítva</p>
                     </div>
                 </div>
@@ -263,19 +263,19 @@
             <!-- Élő állapot sáv -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
                 <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                    <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Aktuális Idő (t)</div>
+                    <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Aktuális idő (t)</div>
                     <div class="text-lg font-mono font-bold text-sky-400 mt-0.5"><span id="liveTime">0.00</span> s</div>
                 </div>
                 <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                    <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Pillanatnyi Sebesség (v)</div>
+                    <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Pillanatnyi sebesség (v)</div>
                     <div class="text-lg font-mono font-bold text-amber-400 mt-0.5"><span id="liveSpeed">0.0</span> km/h</div>
                 </div>
                 <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                    <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Megtett Távolság (s)</div>
+                    <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Megtett távolság (s)</div>
                     <div class="text-lg font-mono font-bold text-emerald-400 mt-0.5"><span id="liveDist">0.0</span> m</div>
                 </div>
                 <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                    <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Mozgás Állapota</div>
+                    <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Mozgás állapota</div>
                     <div id="liveStatus" class="text-sm font-semibold text-slate-300 mt-1 flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-slate-500"></span> Készenlét
                     </div>
@@ -283,14 +283,14 @@
             </div>
         </section>
 
-        <!-- Grafikonok szekció -->
+        <!-- Grafikonok -->
         <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Út-idő grafikon (s - t) -->
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
                 <div class="flex items-center justify-between">
                     <div>
                         <h4 class="text-sm font-bold text-white flex items-center gap-2">
-                            <i class="fa-solid fa-chart-line text-sky-400"></i> Út – Idő Grafikon (s – t)
+                            <i class="fa-solid fa-chart-line text-sky-400"></i> Út – idő grafikon (s – t)
                         </h4>
                         <p class="text-xs text-slate-400">Egyenes vonal (egyenletes mozgás) ➔ Parabola (lassulás)</p>
                     </div>
@@ -306,9 +306,9 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <h4 class="text-sm font-bold text-white flex items-center gap-2">
-                            <i class="fa-solid fa-chart-area text-amber-400"></i> Sebesség – Idő Grafikon (v – t)
+                            <i class="fa-solid fa-chart-area text-amber-400"></i> Sebesség – idő grafikon (v – t)
                         </h4>
-                        <p class="text-xs text-slate-400">Konstans v₀ sebesség ➔ Lineáris csökkenés zéróig</p>
+                        <p class="text-xs text-slate-400">Konstans v₀ sebesség ➔ Lineáris csökkenés nulláig</p>
                     </div>
                     <span class="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">v(t) lejtő</span>
                 </div>
@@ -318,7 +318,7 @@
             </div>
         </section>
 
-        <!-- Fizikai elméleti összegzés és számítási kártyák -->
+        <!-- Fizikai elméleti összegzés és képletek -->
         <section id="formulaSection" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
             <div class="border-b border-slate-800 pb-3">
                 <h3 class="text-lg font-bold text-white flex items-center gap-2">
@@ -365,14 +365,14 @@
                     </div>
                 </div>
 
-                <!-- 3. Fázis: Teljes Féktávolság -->
+                <!-- 3. Fázis: Teljes féktávolság -->
                 <div class="bg-slate-950/70 rounded-xl p-4 border border-sky-500/20 relative">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs uppercase font-bold tracking-wider text-sky-400">Összegzés</span>
                         <i class="fa-solid fa-flag-checkered text-sky-400/50"></i>
                     </div>
                     <h5 class="text-sm font-bold text-white mb-1">Teljes megállási távolság</h5>
-                    <p class="text-xs text-slate-400 mb-3">A teljes távolság a veszély felbukkanásától a jármű álló helyzetéig az észlelési szakasz és a fékezés összege.</p>
+                    <p class="text-xs text-slate-400 mb-3">A teljes távolság a veszély felbukkanásától a jármű álló helyzetéig a reakcióút és a fékút összege.</p>
                     
                     <div class="bg-slate-900 p-2.5 rounded-lg font-mono text-xs text-sky-300 border border-slate-800 mb-2">
                         s_összes = s_r + s_f
